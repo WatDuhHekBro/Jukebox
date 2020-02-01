@@ -1,0 +1,86 @@
+#################################
+# Official Song Name - "<song>" #
+#################################
+1. Title - "title"
+2. Mysterious - "oldHideout1"
+3. Fierce Battle - "oldHideoutBattle"
+4. Distant Future - "oldHideoutEnding"
+5. Awakened - "intro"
+6. Cargo Hold - "tutorial"
+7. Battle 1 - "tutorial-battle"
+8. M.S. Solar - "cargoship-exterior"
+9. Welcome to CrossWorlds - "exposition"
+10. Challenge 1 - "challenge"
+11. Taking What Does Not Belong - "designer"
+12. Boss Battle - "bossbattle1"
+13. CrossCounter! - "crosscounter"
+14. Escape - "escape"
+15. Newcomer's Bridge - "rhombusSquare"
+16. Rhombus Dungeon - "rhombusDungeon"
+17. Challenge 2 - "challenge2"
+18. Valse d'Ahoge - "emilie"
+19. The Path of Justice - "apolloTheme"
+20. Rookie Harbor - "rookieHarbor"
+21. Autumn's Rise - "autumnsRise"
+22. Battle 2 - "fieldBattle"
+23. Travelling Together - "casual"
+24. Lea! - "lea"
+25. Bergen Trail - "bergenTrail"
+26. Bergen Village - "bergenVillage"
+27. Briefing - "briefing"
+28. First Scholars - "firstScholars"
+29. Temple Mine - "coldDungeon"
+30. Improvising - "ponder" or "schneiderTour" (Don't ask me why. They're exactly the same.)
+31. Maroon Valley - "heatArea"
+32. Ba'kii Kum - "heatVillage"
+33. Shocking Reveal - "sorrow"
+34. Temple of the Valley - "heatDungeon"
+35. Lucid Dream - "dreamsequence"
+36. Autumn's Fall - "autumnsFall"
+37. Raid - "raidTheme"
+38. The Experience - "designerBoss1"
+39. Imprisoned - "waiting"
+40. Vermillion Wasteland - "aridField"
+41. Battle 3 - "aridBattle"
+42. Confrontation - "shizukaConfrontation"
+43. Sadness - "sadness"
+44. Infiltration - "infiltration"
+45. Separated Again - "evoDungeon1"
+46. Hack Your Way! - "evoDungeon2"
+47. Escape Again - "evoEscape"
+48. Exponential Growth - "snailBattle1"
+49. Exponential Conclusion - "snailBattle2"
+50. Past Events - "sergeyExposition"
+51. Gaia's Garden - "jungle"
+52. Basin Keep - "basinKeep"
+53. Temple of the Lake - "waveDungeon"
+54. Temple of Thunder - "shockDungeon"
+55. Temple of the Grand Tree - "treeDungeon"
+56. Sapphire Ridge - "forestField"
+57. Rhombus Square - "rhombusSquare2"
+58. Old Hideout - "oldHideout2"
+59. Shizuka - "shizuka"
+60. True Intention - "trueIntentions"
+61. Vermillion Dungeon - "lastDungeon"
+62. The Ultimate Experience - "finalBoss"
+63. Ending - "credits"
+64. Promo Trailer - N/A
+
+###################################
+# CrossCode 1.1.0 Music: "<song>" #
+###################################
+- Arena: "arena"
+- S-Rank Theme: "s-rank"
+- Boss Rush: "bossRush"
+- Glitch Area: "glitchArea"
+
+####################
+# "<song>" - Other #
+####################
+"silence" - Complete silence.
+"short" - An old variant of part of the CrossCentral theme. (TCRF)
+"lolfanfare" - The sound when you obtain an item.
+"landmark" - The sound when you discover a landmark.
+"ability-got" - The sound when you get an ability.
+"puzzle-pg" - An old version of the Temple Mine theme. (TCRF)
+"dreamsequence-intro" - The ambience you hear during most dreams, except for the lucid dream.
