@@ -1,6 +1,7 @@
 {
 	"name": "music-player",
 	"plugin": "plugin.js",
+	"main": "mod.js",
 	"module": false,
 	"ccmodDependencies": {}
 }
