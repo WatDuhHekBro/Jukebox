@@ -1,0 +1,127 @@
+html, body
+{
+	height: 100%;
+	margin: 0;
+	/* Add a default look if no background is provided. */
+	/*color: white;
+	background-color: black;
+	background-image: url(assets/bg.png);*/
+	/* End */
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: cover;
+	image-rendering: pixelated;
+	cursor: default;
+}
+
+*::selection
+{
+	background-color: rgba(0,0,0,0);
+}
+
+#player
+{
+	position: absolute;
+	width: 80%;
+	left: 10%;
+	height: 50%;
+	top: 25%;
+	/* Default player box. */
+	background-color: lightgray;
+	/* End */
+	background-position: center;
+	background-repeat: no-repeat;
+	border-radius: 25px;
+	text-align: center;
+	font-size: 2em;
+	text-shadow: 0 0 10px white;
+}
+
+#player *
+{
+	margin: 0.25em;
+}
+
+.bottom
+{
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	text-align: center;
+}
+
+#slider
+{
+	top: 5%;
+	right: 5%;
+	max-width: 2.5em;
+	position: absolute;
+	border-radius: 15px;
+}
+
+#slider *
+{
+	display: block;
+}
+
+.button
+{
+	cursor: pointer;
+}
+
+.grab
+{
+	cursor: grab;
+}
+
+.grab:active
+{
+	cursor: grabbing;
+}
+
+input[type=range]
+{
+	-webkit-appearance: slider-vertical;
+	width: 100%;
+}
+
+#error
+{
+	background-color: red;
+	text-align: center;
+	margin: 0;
+	padding: 5px;
+	display: none;
+}
+
+@media only screen and (max-width: 600px)
+{
+	*
+	{
+		margin: 0;
+	}
+	
+	#player
+	{
+		height: 100%;
+		width: 100%;
+		position: absolute;
+		top: 0;
+		left: 0;
+		font-size: 1em;
+		overflow: hidden;
+	}
+	
+	#slider
+	{
+		position: absolute;
+		top: 0;
+		right: 0;
+	}
+	
+	#error
+	{
+		position: absolute;
+		bottom: 0;
+	}
+}

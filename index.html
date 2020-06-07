@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Jukebox</title>
+		<meta charset="utf-8">
+		<link rel="icon" type="image/png" href="icon.png">
+		<link rel="stylesheet" type="text/css" href="style.css">
+		<script src="main.js" defer></script>
+	</head>
+	<body>
+		<div id="player" style="background-image: url(icon.png)">
+			<div id="slider">
+				<span id="volume">50%</span>
+				<input id="volumeSlider" type="range" min="0" max="100" value="50" oninput="setVolume(this.value)" onmousewheel="scrollVolume(this)" class="grab">
+				<span id="speaker" onclick="toggleMute()" class="button">🔊</span>
+			</div>
+			<div class="top">
+				<h1>Now Playing</h1>
+				<p id="song"><i>None</i></p>
+			</div>
+			<!-- Maybe hide controls until 1 or more tracks are successfully loaded. -->
+			<div class="bottom">
+				<span id="control" onclick="toggleMusic(this)" class="button">⏸️</span>
+				<span onclick="setSong()" class="button">⏩</span>
+				<select id="tracklist" onchange="setSong(parseInt(this.value))" class="button"></select>
+				<p>Time until next song - <span id="countdown" onclick="countdown = 300; this.innerText = '5:00'" class="button">5:00</span></p>
+				<input type="checkbox" onclick="countdownEnabled = !countdownEnabled" class="button"> Enable Timer</input>
+			</div>
+		</div>
+		<h1 id="error"></h1>
+	</body>
+</html>

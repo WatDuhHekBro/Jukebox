@@ -1,2 +1,5 @@
-# cc-music-player
-CrossCode CCLoader Mod - Turns the title screen into a music player that plays music indefinitely.
+# cc-music-player is gone
+Its purpose was to play music from CrossCode which uses complex looping to play its music for an indefinite amount of time. However, it was basically a band-aid solution for not learning the WebAudio API, and had a system that wasn't user-friendly. So from its ashes rose the new...
+
+# Jukebox
+...
