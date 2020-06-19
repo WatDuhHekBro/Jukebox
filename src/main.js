@@ -111,6 +111,7 @@ class MusicPlayer
 		request.open("GET", path);
 		request.responseType = "arraybuffer";
 		request.onload = function() {callback && callback(request.response)};
+		request.onerror = function() {() => {error.innerHTML = `There was an error loading ${path}!`}};
 		request.send();
 	}
 	pause()
@@ -154,9 +155,15 @@ const volumeControl = {
 	
 };
 
+// XmlHttpRequest file system access blocked
 const errorControl = {
 	
 };*/
+
+window.onerror = (message, source, lineno, colno, e) => {
+	error.style.display = "block";
+	error.innerHTML = message;
+};
 
 /////////////////////////////////
 // Document-Specific Functions //
@@ -165,10 +172,7 @@ const errorControl = {
 (() => {
 	// Let the user know if it isn't going to work.
 	if(!window.AudioContext)
-	{
-		error.style.display = "block";
-		error.innerHTML = "Sorry, your browser doesn't support the Web Audio API!";
-	}
+		throw "Sorry, your browser doesn't support the Web Audio API!";
 	else
 	{
 		// Fields: allowed, volume (0.5), timer (180), startWithTimer (false), darkMode (false), tracks ([])

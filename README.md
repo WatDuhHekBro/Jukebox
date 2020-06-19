@@ -3,3 +3,10 @@ Its purpose was to play music from CrossCode which uses complex looping to play 
 
 # Jukebox
 ...
+
+# How To Use
+1. `npm install`
+2. `npm start`
+
+# Specifications
+- Uses Express for a simple web server in order to conveniently allow XMLHttpRequests. If you want to, you can just use the files in `src/`, delete everything else, then host the server yourself however you want.

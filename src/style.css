@@ -19,6 +19,7 @@ html, body
 	background-color: rgba(0,0,0,0);
 }
 
+/* Fix gray box on small version. */
 #player
 {
 	position: absolute;
@@ -29,6 +30,7 @@ html, body
 	/* Default player box. */
 	background-color: lightgray;
 	/* End */
+	background-image: url(icon.png);
 	background-position: center;
 	background-repeat: no-repeat;
 	border-radius: 25px;
