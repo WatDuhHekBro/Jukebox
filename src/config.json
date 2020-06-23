@@ -1,8 +1,8 @@
 {
-	"allowed": [],
-	"volume": 0.5,
-	"timer": 180,
+	"defaultVolume": 0.5,
+	"fadeDuration": 5,
+	"timeBetweenSongs": 180,
 	"startWithTimer": false,
-	"darkMode": false,
+	"playlists": {},
 	"tracks": []
 }
