@@ -118,5 +118,8 @@ input[type=range]
 	{
 		position: absolute;
 		bottom: 0;
+		/* I don't know why, but making the position absolute takes away its existing width and turns it into a tiny box. */
+		width: 100%;
+		padding: 0;
 	}
 }

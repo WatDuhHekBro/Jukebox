@@ -7,6 +7,7 @@ class Song
 		this.context = new AudioContext();
 		this.gainNode = this.context.createGain();
 		this.hasLockedVolume = false;
+		this.isDestroyed = false;
 		this.setVolume(volume);
 		
 		// Play Song //
@@ -20,11 +21,15 @@ class Song
 				
 				// The delay should sync up for both the intro and the main if there's an intro, so nest those calls to chain them together.
 				Song.request(track.introPath, this.context).then(buffer => {
+					if(this.isDestroyed)
+						return;
 					introSource.buffer = buffer;
 					introSource.connect(this.gainNode);
 					this.gainNode.connect(this.context.destination);
 					return Song.request(track.path, this.context);
 				}).then(buffer => {
+					if(this.isDestroyed)
+						return;
 					introSource.start();
 					let loopEnd = track.loopEnd || buffer.duration;
 					let delay = this.context.currentTime + (track.introEnd || 0);
@@ -36,6 +41,8 @@ class Song
 			{
 				// Even and odd offsets which will keep the cycle going.
 				Song.request(track.path, this.context).then(buffer => {
+					if(this.isDestroyed)
+						return;
 					// Nonetheless, you still have to account for the delay. A considerable amount of time passes between the request and the access.
 					// Still though, it's better to put it in the constructor since you don't have to wait on whether or not the buffer is loaded.
 					// And you don't need to worry about it for the intro since it plays immediately.
@@ -50,6 +57,8 @@ class Song
 		else
 		{
 			Song.request(track.path, this.context).then(buffer => {
+				if(this.isDestroyed)
+					return;
 				let source = this.context.createBufferSource();
 				source.buffer = buffer;
 				source.connect(this.gainNode);
@@ -86,11 +95,15 @@ class Song
 	}
 	destroy()
 	{
+		// Set isDestroyed to true before closing the context because it takes time to close.
+		this.isDestroyed = true;
 		this.context.close();
 	}
 	// Only call later nodes when necessary, which is what the onended listener is for.
 	static playOneLoop(buffer, context, gainNode, loopEnd, delay, loopCount)
 	{
+		if(this.isDestroyed)
+			return;
 		let source = context.createBufferSource();
 		source.buffer = buffer;
 		source.connect(gainNode);
@@ -130,7 +143,7 @@ class Song
 		let output = Math.max(Math.min(value, 1), 0);
 		
 		if(isNaN(output))
-			throw `Invalid output ${output} from volumetric number ${value}!`;
+			throw `Invalid volume output ${output} from ${value}!`;
 		
 		return output;
 	}
@@ -143,7 +156,7 @@ class Song
 		let output = Math.max(Math.min(parseInt(value), 100), 0);
 		
 		if(isNaN(output))
-			throw `Invalid output ${output} from volumetric number ${value}!`;
+			throw `Invalid volume output ${output} from ${value}!`;
 		
 		return output;
 	}
@@ -158,26 +171,25 @@ const Timer = {
 	listener: null,
 	iterate()
 	{
-		// Even if the timer is enabled, it'll only run if a song is playing.
-		if(this.enabled)
+		if(this.seconds <= 0)
 		{
-			if(this.seconds <= 0)
-			{
-				this.stop();
-				return;
-			}
-			
-			this.seconds--;
-			this.listener && this.listener(this.seconds);
+			this.stop();
+			return;
 		}
+		
+		this.seconds--;
+		this.listener && this.listener(this.seconds);
 	},
 	start()
 	{
-		if(this.seconds <= 0)
-			this.reset();
-		if(this.interval !== 0)
-			throw "Warning: Another interval was called but there's already an interval!";
-		this.interval = setInterval(this.iterate.bind(this), 1000);
+		if(this.enabled)
+		{
+			if(this.seconds <= 0)
+				this.reset();
+			if(this.interval !== 0)
+				throw "Warning: Another interval was called but there's already an interval!";
+			this.interval = setInterval(this.iterate.bind(this), 1000);
+		}
 	},
 	stop()
 	{
@@ -195,22 +207,23 @@ const Timer = {
 		this.listener = handler;
 	},
 	// 0:00, 0:59, 1:00, 9:59, 10:00, 59:99, 1:00:00, 9:59:59, 10:00:00, ...
-	toString()
+	getFormattedTime(seconds)
 	{
-		let output = "";
-		let minutes = Math.floor(this.seconds / 60);
-		let seconds = this.seconds % 60;
+		let minutes = Math.floor(seconds / 60);
+		seconds = seconds % 60;
 		
 		if(minutes >= 60)
 		{
 			let hours = Math.floor(minutes / 60);
 			minutes = minutes % 60;
-			output = `${hours.toString()}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+			return `${hours.toString()}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 		}
 		else
-			output = `${minutes.toString()}:${seconds.toString().padStart(2, '0')}`;
-		
-		return output;
+			return `${minutes.toString()}:${seconds.toString().padStart(2, '0')}`;
+	},
+	toString()
+	{
+		return this.getFormattedTime(this.seconds);
 	}
 };
 
@@ -233,17 +246,11 @@ const MusicPlayer = {
 		this.currentTrackIndex = index;
 		Timer.start();
 	},
-	playRandom(playlist = null) // <-- deprecated, choose the queue method
+	// It isn't a good type of random for this, it's better to make a shuffled queue and play that instead because a song can appear multiple times in rapid succession.
+	playRandom()
 	{
-		if(playlist)
-		{
-			let selection = this.playlists[playlist];
-			
-			if(!selection)
-				throw `Invalid playlist ${playlist}!`;
-			
-			this.play(selection[Math.floor(Math.random() * selection.length)]);
-		}
+		if(this.currentPlaylist)
+			this.play(this.currentPlaylist[Math.floor(Math.random() * this.currentPlaylist.length)]);
 		else
 			this.play(Math.floor(Math.random() * this.tracks.length));
 	},
@@ -271,8 +278,10 @@ const MusicPlayer = {
 	},
 	setPlaylist(identifier)
 	{
-		if(this.playlists)
+		if(this.playlists && this.playlists[identifier])
 			this.currentPlaylist = this.playlists[identifier];
+		else
+			this.currentPlaylist = null;
 	},
 	shuffleCurrentPlaylist()
 	{
@@ -280,6 +289,10 @@ const MusicPlayer = {
 		{
 			// https://medium.com/@nitinpatel_20236/how-to-shuffle-correctly-shuffle-an-array-in-javascript-15ea3f84bfb
 		}
+	},
+	getCurrentTime()
+	{
+		return (this.currentSong && Timer.getFormattedTime(Math.floor(this.currentSong.context.currentTime))) || "N/A";
 	},
 	getIcon()
 	{
@@ -303,19 +316,22 @@ const MusicPlayer = {
 // The App object is used by the document and should therefore have a one-to-one correlation with any function it has. Any multi-functionality present should be outside App in order to further modularize the code (meaning the program should be fully functional by just using the console).
 const App = {
 	playerDisplay: document.getElementById("player"),
-	volumeDisplay: document.getElementById("volume"),
-	volumeSlider: document.getElementById("volumeSlider"),
-	volumeSpeaker: document.getElementById("speaker"),
 	top: document.getElementById("top"),
 	songName: document.getElementById("song"),
 	bottom: document.getElementById("bottom"),
 	pauseButton: document.getElementById("control"),
 	trackMenu: document.getElementById("tracklist"),
+	playlistMenu: document.getElementById("playlists"),
 	timer: document.getElementById("countdown"),
 	timerStatus: document.getElementById("timerStatus"),
+	volumeDisplay: document.getElementById("volume"),
+	volumeSlider: document.getElementById("volumeSlider"),
+	volumeSpeaker: document.getElementById("speaker"),
 	banner: document.getElementById("error"),
 	isPaused: false,
 	isMuted: false,
+	inTrackingMode: false,
+	interval: 0,
 	initialize()
 	{
 		window.onerror = (message, source, lineno, colno, e) => {
@@ -331,12 +347,16 @@ const App = {
 		request.onload = () => {
 			// Load the list of tracks and their metadata, but don't load buffers into memory all at once since it hogs up at least 3 GB of memory.
 			let config = JSON.parse(request.responseText);
+			let defaultPlaylist = "";
 			if("defaultVolume" in config) MusicPlayer.volume = Song.capDisplayVolume(config.defaultVolume) / 100;
 			if("fadeDuration" in config) MusicPlayer.fadeDuration = Math.max(config.fadeDuration, 0);
-			if("timeBetweenSongs" in config) Timer.resetToTime = Math.max(config.timeBetweenSongs, 0);
+			if("timeBetweenSongs" in config) Timer.resetToTime = Math.max(Math.floor(config.timeBetweenSongs), 0);
 			if("startWithTimer" in config) Timer.enabled = !!config.startWithTimer;
+			if("defaultPlaylist" in config) defaultPlaylist = config.defaultPlaylist;
 			if("playlists" in config) MusicPlayer.playlists = config.playlists;
 			if("tracks" in config) MusicPlayer.tracks = config.tracks;
+			
+			// Tracks //
 			
 			while(this.trackMenu.firstElementChild)
 				this.trackMenu.removeChild(this.trackMenu.firstElementChild);
@@ -348,6 +368,31 @@ const App = {
 				option.innerText = i === -1 ? "" : MusicPlayer.tracks[i].name;
 				this.trackMenu.appendChild(option);
 			}
+			
+			// Playlists //
+			
+			while(this.playlistMenu.firstElementChild)
+				this.playlistMenu.removeChild(this.playlistMenu.firstElementChild);
+			
+			this.playlistMenu.appendChild(document.createElement("option"));
+			
+			for(let name in MusicPlayer.playlists)
+			{
+				let option = document.createElement("option");
+				option.value = name;
+				option.innerText = name;
+				this.playlistMenu.appendChild(option);
+			}
+			
+			if(defaultPlaylist in MusicPlayer.playlists)
+			{
+				MusicPlayer.setPlaylist(defaultPlaylist);
+				this.playlistMenu.value = defaultPlaylist;
+			}
+			else
+				console.warn(`${defaultPlaylist} is not a valid playlist!`);
+			
+			// Other //
 			
 			this.setDisplayVolume(MusicPlayer.volume * 100);
 			this.resetTimer();
@@ -377,6 +422,11 @@ const App = {
 		this.setDisplaySong(skipChangingMenu);
 		this.isPaused = false;
 		this.pauseButton.innerText = this.getPausedIcon(false);
+		this.setTrackingMode(false);
+	},
+	setPlaylist(name)
+	{
+		MusicPlayer.setPlaylist(name);
 	},
 	setVolume(value)
 	{
@@ -397,7 +447,9 @@ const App = {
 		else
 		{
 			MusicPlayer.resume(this.isMuted || true);
-			Timer.start();
+			
+			if(MusicPlayer.currentSong)
+				Timer.start();
 		}
 		
 		// " || true" is temporary until you figure out proper fading.
@@ -412,11 +464,39 @@ const App = {
 	toggleTimer()
 	{
 		Timer.enabled = !Timer.enabled;
+		
+		// Even if the timer is enabled, it'll only run if a song is playing.
+		if(!this.isPaused && MusicPlayer.currentSong)
+		{
+			if(Timer.enabled)
+				Timer.start();
+			else
+				Timer.stop();
+		}
 	},
 	resetTimer()
 	{
 		Timer.reset();
 		this.timer.innerText = Timer.toString();
+	},
+	// Leave empty for a toggle.
+	setTrackingMode(value)
+	{
+		this.inTrackingMode = value !== undefined ? !!value : !this.inTrackingMode;
+		
+		if(this.inTrackingMode)
+		{
+			this.songName.innerHTML = `You've been playing this song for: ${MusicPlayer.getCurrentTime()}`;
+			this.interval = setInterval(() => {
+				this.songName.innerHTML = `You've been playing this song for: ${MusicPlayer.getCurrentTime()}`;
+			}, 500);
+		}
+		else
+		{
+			this.songName.innerHTML = MusicPlayer.toString();
+			clearInterval(this.interval);
+			this.interval = 0;
+		}
 	},
 	setDisplaySong(calledFromDocument = false)
 	{

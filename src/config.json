@@ -3,6 +3,7 @@
 	"fadeDuration": 5,
 	"timeBetweenSongs": 180,
 	"startWithTimer": false,
+	"defaultPlaylist": "",
 	"playlists": {},
 	"tracks": []
 }
