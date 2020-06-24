@@ -35,12 +35,14 @@ html, body
 	margin: 0.25em;
 }
 
-.bottom
+#bottom
 {
 	position: absolute;
 	bottom: 0;
 	width: 100%;
 	text-align: center;
+	/* Wait until initialization is done (and if it doesn't, then the program isn't loading properly). */
+	display: none;
 }
 
 #slider

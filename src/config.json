@@ -1,5 +1,5 @@
 {
-	"defaultVolume": 0.5,
+	"defaultVolume": 50,
 	"fadeDuration": 5,
 	"timeBetweenSongs": 180,
 	"startWithTimer": false,

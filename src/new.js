@@ -63,18 +63,26 @@ class Song
 	}
 	pause(duration = 5)
 	{
-		
+		if(duration <= 0)
+			this.context.suspend();
+		else
+		{
+			
+		}
 	}
 	resume(duration = 5)
 	{
-		
+		if(duration <= 0)
+			this.context.resume();
+		else
+		{
+			
+		}
 	}
 	setVolume(value)
 	{
-		if(value > 1 || value < 0)
-			throw `The volume of a song must be between 0 and 1 (inclusive)! The value given was ${value}.`;
 		if(!this.hasLockedVolume)
-			this.gainNode.gain.value = value;
+			this.gainNode.gain.value = Song.capVolume(value);
 	}
 	destroy()
 	{
@@ -113,66 +121,90 @@ class Song
 			request.send();
 		});
 	}
+	// Returns the value between 0 to 1.
+	static capVolume(value, disableWarning = false)
+	{
+		if((value > 1 || value < 0) && !disableWarning)
+			console.warn(`The volume of a song must be between 0 and 1! The value given was ${value}.`);
+		
+		let output = Math.max(Math.min(value, 1), 0);
+		
+		if(isNaN(output))
+			throw `Invalid output ${output} from volumetric number ${value}!`;
+		
+		return output;
+	}
+	// Returns the value as an integer between 0 to 100.
+	static capDisplayVolume(value, disableWarning = false)
+	{
+		if((value > 100 || value < 0) && !disableWarning)
+			console.warn(`The display volume must be between 0 and 100! The value given was ${value}.`);
+		
+		let output = Math.max(Math.min(parseInt(value), 100), 0);
+		
+		if(isNaN(output))
+			throw `Invalid output ${output} from volumetric number ${value}!`;
+		
+		return output;
+	}
 }
 
 const Timer = {
 	// The reason I create an interval every time the user pauses and resumes the timer is because the timer will start counting after exactly 1 second rather than anywhere in between that second and it saves memory (I think).
 	interval: 0,
-	resetToTime: 5,
+	resetToTime: 180,
+	seconds: 0, // It'll automatically go to Timer.resetToTime when started.
 	enabled: false,
-	listeners: {},
+	listener: null,
 	iterate()
 	{
-		if(this.seconds <= 0)
-		{
-			this.stop();
-			return;
-		}
-		
-		this.seconds--;
-		
-		if(this.seconds in this.listeners)
-			this.listeners[this.seconds]();
-	},
-	toggle()
-	{
+		// Even if the timer is enabled, it'll only run if a song is playing.
 		if(this.enabled)
-			this.stop();
-		else
-			this.start();
+		{
+			if(this.seconds <= 0)
+			{
+				this.stop();
+				return;
+			}
+			
+			this.seconds--;
+			this.listener && this.listener(this.seconds);
+		}
 	},
 	start()
 	{
 		if(this.seconds <= 0)
-			this.seconds = this.resetToTime;
+			this.reset();
 		if(this.interval !== 0)
 			throw "Warning: Another interval was called but there's already an interval!";
 		this.interval = setInterval(this.iterate.bind(this), 1000);
-		this.enabled = true;
 	},
 	stop()
 	{
 		clearInterval(this.interval);
 		this.interval = 0;
-		this.enabled = false;
 	},
-	setListener(seconds, handler)
+	reset()
 	{
-		if(!handler || handler.constructor !== Function)
-			throw "Error: Timer.setListener was called but no handler was provided!";
-		this.listeners[seconds] = handler;
+		this.seconds = this.resetToTime;
+	},
+	setListener(handler)
+	{
+		if(!handler || (handler.constructor && handler.constructor !== Function))
+			throw "Error: Timer.setListener was called but no handler (or an invalid one) was provided!";
+		this.listener = handler;
 	},
 	// 0:00, 0:59, 1:00, 9:59, 10:00, 59:99, 1:00:00, 9:59:59, 10:00:00, ...
 	toString()
 	{
 		let output = "";
-		let minutes = Math.floor(this.seconds/60);
-		let seconds = this.seconds%60;
+		let minutes = Math.floor(this.seconds / 60);
+		let seconds = this.seconds % 60;
 		
 		if(minutes >= 60)
 		{
-			let hours = Math.floor(minutes/60);
-			minutes = minutes%60;
+			let hours = Math.floor(minutes / 60);
+			minutes = minutes % 60;
 			output = `${hours.toString()}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 		}
 		else
@@ -181,34 +213,61 @@ const Timer = {
 		return output;
 	}
 };
-Timer.seconds = Timer.resetToTime;
 
 const MusicPlayer = {
 	volume: 0.5,
 	fadeDuration: 5,
-	timerEnabled: false,
-	tracks: null,
-	playlists: null,
-	currentTrack: null,
+	tracks: [],
+	playlists: {},
 	currentPlaylist: null, // Array of track indexes
+	currentTrack: null,
 	currentSong: null, // Song instance
+	currentTrackIndex: -1,
 	// When MusicPlayer.play is called multiple times in rapid succession, it will reset its internal delay so you get the effect of having it be silent until you settle on a song you like.
 	play(index)
 	{
-		
+		if(index < 0 || index >= this.tracks.length)
+			throw `Index out of bounds! Index ${index} was given to MusicPlayer.play, but the length of its array is ${this.tracks.length}.`;
+		this.currentTrack = this.tracks[index];
+		this.currentSong = new Song(this.currentTrack, this.volume);
+		this.currentTrackIndex = index;
+		Timer.start();
 	},
-	playRandom(playlist)
+	playRandom(playlist = null) // <-- deprecated, choose the queue method
 	{
-		
+		if(playlist)
+		{
+			let selection = this.playlists[playlist];
+			
+			if(!selection)
+				throw `Invalid playlist ${playlist}!`;
+			
+			this.play(selection[Math.floor(Math.random() * selection.length)]);
+		}
+		else
+			this.play(Math.floor(Math.random() * this.tracks.length));
 	},
 	stop()
 	{
-		
+		this.currentSong && this.currentSong.destroy();
+		this.currentTrack = null;
+		this.currentSong = null;
+		this.currentTrackIndex = -1;
+		Timer.stop();
+		App.resetTimer(); // I know, I know. I said I'd keep everything separate, but it'd be a lot more convenient just to access App this one time.
 	},
-	// The volume is 50% by default, but can be changed upon loading your config.
 	setVolume(value)
 	{
-		this.song && this.song.setVolume(value);
+		this.currentSong && this.currentSong.setVolume(value);
+		this.volume = Song.capVolume(value);
+	},
+	pause(isInstant = false)
+	{
+		this.currentSong && this.currentSong.pause(isInstant ? 0 : this.fadeDuration);
+	},
+	resume(isInstant = false)
+	{
+		this.currentSong && this.currentSong.resume(isInstant ? 0 : this.fadeDuration);
 	},
 	setPlaylist(identifier)
 	{
@@ -234,38 +293,190 @@ const MusicPlayer = {
 	{
 		let output = "<i>None</i>";
 		
-		if(currentTrack)
+		if(this.currentTrack)
 			output = `${this.currentTrack.game} - ${this.currentTrack.name}`;
 		
 		return output;
 	}
 };
 
-(() => {
-	window.onerror = (message, source, lineno, colno, e) => {
-		let error = document.getElementById("error");
-		error.style.display = "block";
-		error.innerHTML = message;
-	};
-	
-	if(!window.AudioContext)
-		throw "Sorry, your browser doesn't support the Web Audio API!";
-	
-	let request = new XMLHttpRequest();
-	request.open("GET", "assets/config.json");
-	request.onload = () => {
-		let config = JSON.parse(request.responseText);
-		MusicPlayer.volume = config.defaultVolume;
-		MusicPlayer.fadeDuration = config.fadeDuration;
-		Timer.resetToTime = config.timeBetweenSongs;
-		MusicPlayer.timerEnabled = config.startWithTimer;
-		MusicPlayer.playlists = config.playlists;
-		MusicPlayer.tracks = config.tracks;
-	};
-	request.send();
-})()
-
 // The App object is used by the document and should therefore have a one-to-one correlation with any function it has. Any multi-functionality present should be outside App in order to further modularize the code (meaning the program should be fully functional by just using the console).
 const App = {
-	
+	playerDisplay: document.getElementById("player"),
+	volumeDisplay: document.getElementById("volume"),
+	volumeSlider: document.getElementById("volumeSlider"),
+	volumeSpeaker: document.getElementById("speaker"),
+	top: document.getElementById("top"),
+	songName: document.getElementById("song"),
+	bottom: document.getElementById("bottom"),
+	pauseButton: document.getElementById("control"),
+	trackMenu: document.getElementById("tracklist"),
+	timer: document.getElementById("countdown"),
+	timerStatus: document.getElementById("timerStatus"),
+	banner: document.getElementById("error"),
+	isPaused: false,
+	isMuted: false,
+	initialize()
+	{
+		window.onerror = (message, source, lineno, colno, e) => {
+			this.banner.style.display = "block";
+			this.banner.innerHTML = message;
+		};
+		
+		if(!window.AudioContext)
+			throw "Sorry, your browser doesn't support the Web Audio API!";
+		
+		let request = new XMLHttpRequest();
+		request.open("GET", "config.json");
+		request.onload = () => {
+			// Load the list of tracks and their metadata, but don't load buffers into memory all at once since it hogs up at least 3 GB of memory.
+			let config = JSON.parse(request.responseText);
+			if("defaultVolume" in config) MusicPlayer.volume = Song.capDisplayVolume(config.defaultVolume) / 100;
+			if("fadeDuration" in config) MusicPlayer.fadeDuration = Math.max(config.fadeDuration, 0);
+			if("timeBetweenSongs" in config) Timer.resetToTime = Math.max(config.timeBetweenSongs, 0);
+			if("startWithTimer" in config) Timer.enabled = !!config.startWithTimer;
+			if("playlists" in config) MusicPlayer.playlists = config.playlists;
+			if("tracks" in config) MusicPlayer.tracks = config.tracks;
+			
+			while(this.trackMenu.firstElementChild)
+				this.trackMenu.removeChild(this.trackMenu.firstElementChild);
+			
+			for(let i = -1; i < MusicPlayer.tracks.length; i++)
+			{
+				let option = document.createElement("option");
+				option.value = i;
+				option.innerText = i === -1 ? "" : MusicPlayer.tracks[i].name;
+				this.trackMenu.appendChild(option);
+			}
+			
+			this.setDisplayVolume(MusicPlayer.volume * 100);
+			this.resetTimer();
+			this.timerStatus.checked = Timer.enabled;
+			Timer.setListener(seconds => {
+				this.timer.innerText = Timer.toString();
+				
+				if(seconds <= 0)
+					this.setSong();
+			});
+			
+			this.bottom.style.display = "block";
+		};
+		request.send();
+	},
+	// Document-only function, called by App.trackMenu.
+	setSong(index, skipChangingMenu = false)
+	{
+		// temporary code below
+		MusicPlayer.stop();
+		
+		if(index === undefined)
+			MusicPlayer.playRandom();
+		else if(index >= 0)
+			MusicPlayer.play(index);
+		
+		this.setDisplaySong(skipChangingMenu);
+		this.isPaused = false;
+		this.pauseButton.innerText = this.getPausedIcon(false);
+	},
+	setVolume(value)
+	{
+		this.setDisplayVolume(value);
+		MusicPlayer.setVolume(Song.capVolume(parseInt(value) / 100));
+	},
+	togglePause()
+	{
+		this.isPaused = !this.isPaused;
+		this.pauseButton.innerText = this.getPausedIcon(this.isPaused);
+		
+		// Prevent this function from changing the volume if it's muted. It still pauses and plays though, just at 0 volume.
+		if(this.isPaused)
+		{
+			MusicPlayer.pause(this.isMuted || true);
+			Timer.stop();
+		}
+		else
+		{
+			MusicPlayer.resume(this.isMuted || true);
+			Timer.start();
+		}
+		
+		// " || true" is temporary until you figure out proper fading.
+	},
+	toggleMute()
+	{
+		this.isMuted = !this.isMuted;
+		this.volumeSlider.disabled = this.isMuted;
+		MusicPlayer.setVolume(this.isMuted ? 0 : (Song.capDisplayVolume(this.volumeSlider.value) / 100));
+		this.volumeSpeaker.innerText = this.isMuted ? '🔇' : this.getSpeakerIcon(Song.capDisplayVolume(this.volumeSlider.value));
+	},
+	toggleTimer()
+	{
+		Timer.enabled = !Timer.enabled;
+	},
+	resetTimer()
+	{
+		Timer.reset();
+		this.timer.innerText = Timer.toString();
+	},
+	setDisplaySong(calledFromDocument = false)
+	{
+		let track = MusicPlayer.currentTrack;
+		document.title = track ? `🎵 ${track.name} 🎵` : "Jukebox";
+		this.songName.innerHTML = MusicPlayer.toString();
+		this.playerDisplay.style.backgroundImage = (track && track.icon) ? `url(${track.icon})` : "url(icon.png)";
+		
+		if(!calledFromDocument)
+			this.trackMenu.value = MusicPlayer.currentTrackIndex;
+	},
+	setDisplayVolume(volume, calledFromDocument = false)
+	{
+		let displayVolume = Song.capDisplayVolume(volume);
+		this.volumeDisplay.innerText = `${displayVolume}%`;
+		
+		if(!calledFromDocument)
+			this.volumeSlider.value = displayVolume;
+		
+		this.volumeSpeaker.innerText = this.getSpeakerIcon(displayVolume);
+	},
+	getSpeakerIcon(value)
+	{
+		if(value <= 0)
+			return '🔈';
+		else if(value < 50)
+			return '🔉';
+		else
+			return '🔊';
+	},
+	getPausedIcon(isPaused)
+	{
+		return isPaused ? '▶️' : '⏸️';
+	},
+	// Document-only function, called by App.volumeSlider when scrolling.
+	scrollVolume(e)
+	{
+		if(this.isMuted)
+			return;
+		
+		let delta = event.deltaY;
+		let direction = -delta / Math.abs(delta);
+		let currentDisplayVolume = parseInt(e.value);
+		let newDisplayVolume;
+		
+		// Go to the nearest number divisible by 5 like VLC.
+		if(currentDisplayVolume % 5 !== 0)
+		{
+			newDisplayVolume = currentDisplayVolume - (currentDisplayVolume % 5); // Floored value.
+			
+			if(direction > 0)
+				newDisplayVolume += 5;
+		}
+		else
+			newDisplayVolume = Song.capDisplayVolume(currentDisplayVolume + direction * 5, true);
+		
+		e.value = newDisplayVolume;
+		this.setDisplayVolume(newDisplayVolume, true);
+		MusicPlayer.setVolume(newDisplayVolume / 100);
+	}
 };
+
+App.initialize();
