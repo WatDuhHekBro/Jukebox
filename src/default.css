@@ -11,7 +11,7 @@ html, body
 
 *::selection
 {
-	background-color: rgba(0,0,0,0);
+	background-color: rgba(0, 0, 0, 0);
 }
 
 #player
@@ -33,6 +33,26 @@ html, body
 #player *
 {
 	margin: 0.25em;
+}
+
+.tag
+{
+	animation: rainbow 15s linear 0s infinite normal;
+	border-radius: 5px;
+	padding: 0 5px;
+	/* Used to override the specificity of "#player *". I should probably find a better way. */
+	margin: 0 !important;
+}
+
+@keyframes rainbow
+{
+	0% {background-color: red; color: white;}
+	12% {background-color: orange; color: black;}
+	25% {background-color: yellow; color: black;}
+	50% {background-color: green; color: white;}
+	67% {background-color: blue; color: white;}
+	83% {background-color: violet; color: white;}
+	100% {background-color: red; color: white;}
 }
 
 #bottom
@@ -58,6 +78,42 @@ html, body
 {
 	display: block;
 }
+
+#playlistEditor
+{
+	position: absolute;
+	margin: 0;
+	top: 0;
+	left: -35%;
+	width: 35%;
+	height: 100%;
+	max-width: 300px;
+	background-color: darkgray;
+	font-size: 1em;
+	text-align: center;
+	border-radius: 10px;
+	transition: left 0.5s ease-out;
+}
+
+#playlistEditor.active
+{
+	left: 0;
+}
+
+#playlistEditor *
+{
+	margin: 0;
+}
+
+/*#playlistList
+{
+	
+}
+
+#playlistEntries
+{
+	
+}*/
 
 .button
 {
@@ -112,6 +168,12 @@ input[type=range]
 		position: absolute;
 		top: 0;
 		right: 0;
+	}
+	
+	#playlistEditor
+	{
+		width: 25%;
+		font-size: 0.5em;
 	}
 	
 	#error

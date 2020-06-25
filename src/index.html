@@ -15,10 +15,11 @@
 				<p id="song" onclick="App.setTrackingMode()" class="button"><i>None</i></p>
 			</div>
 			<div id="bottom">
-				<span id="control" onclick="App.togglePause()" class="button">⏸️</span>
+				<span id="control" onclick="App.togglePause()" class="button">▶️</span>
 				<span onclick="App.setSong()" class="button">⏩</span>
 				<select id="tracklist" onchange="App.setSong(parseInt(this.value), true)" class="button"></select>
 				<select id="playlists" onchange="App.setPlaylist(this.value)" class="button"></select>
+				<!--<span onclick="document.getElementById('playlistEditor').classList.add('active')" class="button">📝</span>-->
 				<p>Time until next song - <span id="countdown" onclick="App.resetTimer()" class="button"></span></p>
 				<input id="timerStatus" type="checkbox" onclick="App.toggleTimer()" class="button"> Enable Timer</input>
 			</div>
@@ -28,6 +29,19 @@
 				<span id="speaker" onclick="App.toggleMute()" class="button">🔊</span>
 			</div>
 		</div>
+		<!--<div id="playlistEditor">
+			<h1>Playlists</h1>
+			<div id="playlistList">
+				<span>asdf</span>
+				<span>vgm</span>
+			</div>
+			<div id="playlistEntries">
+				<span>one</span>
+				<span>zwei</span>
+				<span>3</span>
+				<span>4</span>
+			</div>
+		</div>-->
 		<h1 id="error"></h1>
 	</body>
 </html>

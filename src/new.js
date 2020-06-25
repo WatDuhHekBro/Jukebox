@@ -5,8 +5,9 @@ class Song
 	constructor(track, volume = 0.5)
 	{
 		this.context = new AudioContext();
-		this.gainNode = this.context.createGain();
-		this.hasLockedVolume = false;
+		this.volume = this.context.createGain();
+		this.fade = this.context.createGain();
+		this.timeout = 0;
 		this.isDestroyed = false;
 		this.setVolume(volume);
 		
@@ -18,14 +19,15 @@ class Song
 			if(track.introPath)
 			{
 				let introSource = this.context.createBufferSource();
+				introSource.connect(this.volume);
+				this.volume.connect(this.fade);
+				this.fade.connect(this.context.destination);
 				
 				// The delay should sync up for both the intro and the main if there's an intro, so nest those calls to chain them together.
 				Song.request(track.introPath, this.context).then(buffer => {
 					if(this.isDestroyed)
 						return;
 					introSource.buffer = buffer;
-					introSource.connect(this.gainNode);
-					this.gainNode.connect(this.context.destination);
 					return Song.request(track.path, this.context);
 				}).then(buffer => {
 					if(this.isDestroyed)
@@ -33,8 +35,8 @@ class Song
 					introSource.start();
 					let loopEnd = track.loopEnd || buffer.duration;
 					let delay = this.context.currentTime + (track.introEnd || 0);
-					Song.playOneLoop(buffer, this.context, this.gainNode, loopEnd, delay, 0);
-					Song.playOneLoop(buffer, this.context, this.gainNode, loopEnd, delay, 1);
+					this.playOneLoop(buffer, loopEnd, delay, 0);
+					this.playOneLoop(buffer, loopEnd, delay, 1);
 				}).catch(console.error);
 			}
 			else
@@ -49,8 +51,8 @@ class Song
 					// You have to place the delay here since the delay is based on the time it takes to load this section.
 					let loopEnd = track.loopEnd || buffer.duration;
 					let delay = this.context.currentTime;
-					Song.playOneLoop(buffer, this.context, this.gainNode, loopEnd, delay, 0);
-					Song.playOneLoop(buffer, this.context, this.gainNode, loopEnd, delay, 1);
+					this.playOneLoop(buffer, loopEnd, delay, 0);
+					this.playOneLoop(buffer, loopEnd, delay, 1);
 				}).catch(console.error);
 			}
 		}
@@ -61,8 +63,9 @@ class Song
 					return;
 				let source = this.context.createBufferSource();
 				source.buffer = buffer;
-				source.connect(this.gainNode);
-				this.gainNode.connect(this.context.destination);
+				source.connect(this.volume);
+				this.volume.connect(this.fade);
+				this.fade.connect(this.context.destination);
 				source.loop = true;
 				source.loopStart = track.loopStart || 0;
 				source.loopEnd = track.loopEnd || buffer.duration; // loopStart doesn't work if loopEnd is 0.
@@ -70,13 +73,21 @@ class Song
 			}).catch(console.error);
 		}
 	}
+	// For the pause and resume functions, I decided to use linearRampToValueAtTime instead of exponentialRampToValueAtTime because not only is exponentialRampToValueAtTime a pain to work with (must be > 0), it seems to be broken. Fading in from a low value works fine, but fading out from a value like 1 makes it instant, which is what I don't want to happen.
+	// Weird bug: Pausing after a fade in will stop it instantly and make an instant resume fade in again.
 	pause(duration = 5)
 	{
 		if(duration <= 0)
 			this.context.suspend();
 		else
 		{
-			
+			this.fade.gain.cancelAndHoldAtTime(0); // Change it ASAP so the effects are instant.
+			this.fade.gain.linearRampToValueAtTime(this.fade.gain.value, 0); // Okay, so for some odd reason, if you fully resume and then you pause, the next linearRampToValueAtTime will be instant regardless of the fact that you're setting it relative to the context's currentTime. However, a quick fix for this is to call it once so that the next linearRampToValueAtTime works as intended.
+			this.fade.gain.linearRampToValueAtTime(0, this.context.currentTime + duration);
+			this.timeout = setTimeout(() => {
+				if(!this.isDestroyed)
+					this.context.suspend();
+			}, duration * 1000);
 		}
 	}
 	resume(duration = 5)
@@ -85,13 +96,12 @@ class Song
 			this.context.resume();
 		else
 		{
-			
+			this.fade.gain.cancelAndHoldAtTime(0); // Change it ASAP so the effects are instant.
+			this.fade.gain.linearRampToValueAtTime(1, this.context.currentTime + duration);
+			this.context.resume();
+			clearTimeout(this.timeout);
+			this.timeout = 0;
 		}
-	}
-	setVolume(value)
-	{
-		if(!this.hasLockedVolume)
-			this.gainNode.gain.value = Song.capVolume(value);
 	}
 	destroy()
 	{
@@ -99,17 +109,22 @@ class Song
 		this.isDestroyed = true;
 		this.context.close();
 	}
+	setVolume(value)
+	{
+		this.volume.gain.value = Song.capVolume(value);
+	}
 	// Only call later nodes when necessary, which is what the onended listener is for.
-	static playOneLoop(buffer, context, gainNode, loopEnd, delay, loopCount)
+	playOneLoop(buffer, loopEnd, delay, loopCount)
 	{
 		if(this.isDestroyed)
 			return;
-		let source = context.createBufferSource();
+		let source = this.context.createBufferSource();
 		source.buffer = buffer;
-		source.connect(gainNode);
-		gainNode.connect(context.destination);
+		source.connect(this.volume);
+		this.volume.connect(this.fade);
+		this.fade.connect(this.context.destination);
 		// AudioBufferSourceNode.start uses the AudioContext's currentTime for its delay rather than the amount of time from when it's called, meaning you don't have to mess with part after a song's loop or adjust for the current time in relation to the starting time. Just specify which offset it'll play at.
-		source.onended = () => {Song.playOneLoop(buffer, context, gainNode, loopEnd, delay, loopCount + 2)};
+		source.onended = () => {this.playOneLoop(buffer, loopEnd, delay, loopCount + 2)};
 		source.start(loopCount * loopEnd + delay);
 	}
 	static request(path, context)
@@ -307,7 +322,7 @@ const MusicPlayer = {
 		let output = "<i>None</i>";
 		
 		if(this.currentTrack)
-			output = `${this.currentTrack.game} - ${this.currentTrack.name}`;
+			output = `<span class="tag">${this.currentTrack.game}</span> ${this.currentTrack.name}`;
 		
 		return output;
 	}
@@ -327,16 +342,18 @@ const App = {
 	volumeDisplay: document.getElementById("volume"),
 	volumeSlider: document.getElementById("volumeSlider"),
 	volumeSpeaker: document.getElementById("speaker"),
+	playlistEditor: document.getElementById("playlistEditor"),
 	banner: document.getElementById("error"),
+	silence: null, // This is an HTML audio element that'll be used to activate Chrome's global media controls since the WebAudio API can't.
 	isPaused: false,
 	isMuted: false,
 	inTrackingMode: false,
 	interval: 0,
 	initialize()
 	{
-		window.onerror = (message, source, lineno, colno, e) => {
+		window.onerror = (message, source, line, column, error) => {
 			this.banner.style.display = "block";
-			this.banner.innerHTML = message;
+			this.banner.innerHTML = error;
 		};
 		
 		if(!window.AudioContext)
@@ -358,6 +375,9 @@ const App = {
 			
 			// Tracks //
 			
+			if(MusicPlayer.tracks.length === 0)
+				throw "You must have at least one track to use the jukebox!";
+			
 			while(this.trackMenu.firstElementChild)
 				this.trackMenu.removeChild(this.trackMenu.firstElementChild);
 			
@@ -371,26 +391,31 @@ const App = {
 			
 			// Playlists //
 			
-			while(this.playlistMenu.firstElementChild)
-				this.playlistMenu.removeChild(this.playlistMenu.firstElementChild);
-			
-			this.playlistMenu.appendChild(document.createElement("option"));
-			
-			for(let name in MusicPlayer.playlists)
-			{
-				let option = document.createElement("option");
-				option.value = name;
-				option.innerText = name;
-				this.playlistMenu.appendChild(option);
-			}
-			
-			if(defaultPlaylist in MusicPlayer.playlists)
-			{
-				MusicPlayer.setPlaylist(defaultPlaylist);
-				this.playlistMenu.value = defaultPlaylist;
-			}
+			if(Object.keys(MusicPlayer.playlists).length === 0)
+				this.playlistMenu.style.display = "none";
 			else
-				console.warn(`${defaultPlaylist} is not a valid playlist!`);
+			{
+				while(this.playlistMenu.firstElementChild)
+					this.playlistMenu.removeChild(this.playlistMenu.firstElementChild);
+				
+				this.playlistMenu.appendChild(document.createElement("option"));
+				
+				for(let name in MusicPlayer.playlists)
+				{
+					let option = document.createElement("option");
+					option.value = name;
+					option.innerText = name;
+					this.playlistMenu.appendChild(option);
+				}
+				
+				if(defaultPlaylist in MusicPlayer.playlists)
+				{
+					MusicPlayer.setPlaylist(defaultPlaylist);
+					this.playlistMenu.value = defaultPlaylist;
+				}
+				else
+					console.warn(`"${defaultPlaylist}" is not a valid playlist!`);
+			}
 			
 			// Other //
 			
@@ -403,6 +428,9 @@ const App = {
 				if(seconds <= 0)
 					this.setSong();
 			});
+			this.chromeGlobalMediaControlsInit();
+			
+			// Done //
 			
 			this.bottom.style.display = "block";
 		};
@@ -423,6 +451,7 @@ const App = {
 		this.isPaused = false;
 		this.pauseButton.innerText = this.getPausedIcon(false);
 		this.setTrackingMode(false);
+		this.silence && this.silence.play();
 	},
 	setPlaylist(name)
 	{
@@ -441,18 +470,19 @@ const App = {
 		// Prevent this function from changing the volume if it's muted. It still pauses and plays though, just at 0 volume.
 		if(this.isPaused)
 		{
-			MusicPlayer.pause(this.isMuted || true);
+			MusicPlayer.pause(this.isMuted);
 			Timer.stop();
+			this.silence && this.silence.pause();
 		}
 		else
 		{
-			MusicPlayer.resume(this.isMuted || true);
+			MusicPlayer.resume(this.isMuted);
 			
 			if(MusicPlayer.currentSong)
 				Timer.start();
+			
+			this.silence && this.silence.play();
 		}
-		
-		// " || true" is temporary until you figure out proper fading.
 	},
 	toggleMute()
 	{
@@ -507,6 +537,8 @@ const App = {
 		
 		if(!calledFromDocument)
 			this.trackMenu.value = MusicPlayer.currentTrackIndex;
+		
+		this.chromeGlobalMediaControlsUpdate();
 	},
 	setDisplayVolume(volume, calledFromDocument = false)
 	{
@@ -556,6 +588,37 @@ const App = {
 		e.value = newDisplayVolume;
 		this.setDisplayVolume(newDisplayVolume, true);
 		MusicPlayer.setVolume(newDisplayVolume / 100);
+	},
+	chromeGlobalMediaControlsUpdate()
+	{
+		if("mediaSession" in navigator)
+		{
+			navigator.mediaSession.metadata = new MediaMetadata({
+				album: "Jukebox",
+				title: MusicPlayer.currentTrack && MusicPlayer.currentTrack.name || "None",
+				artist: MusicPlayer.currentTrack && MusicPlayer.currentTrack.game || "None",
+				// I decided to just stick with icon.png. I know for certain that it'll be 128x128, plus, I've noticed that other icons tend to be quite inconsistent.
+				artwork: [{
+					src: "icon.png",
+					sizes: "128x128"
+				}]
+			});
+		}
+	},
+	chromeGlobalMediaControlsInit()
+	{
+		if("mediaSession" in navigator)
+		{
+			this.silence = new Audio();
+			// There's some threshold that determines whether or not the global media controls show. 5 seconds works and doesn't take too long to load.
+			this.silence.src = "https://raw.githubusercontent.com/anars/blank-audio/master/5-seconds-of-silence.mp3";
+			this.silence.loop = true;
+			this.silence.play().then(() => {this.silence.pause()}); // Initialize the silence to appear.
+			navigator.mediaSession.setActionHandler("play", () => {this.togglePause()});
+			navigator.mediaSession.setActionHandler("pause", () => {this.togglePause()});
+			navigator.mediaSession.setActionHandler("nexttrack", () => {this.setSong()});
+			this.chromeGlobalMediaControlsUpdate();
+		}
 	}
 };
 

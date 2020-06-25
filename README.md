@@ -18,6 +18,7 @@ While these two programs use completely different systems, they both ultimately 
 ## Notes
 - You can click the name of the current song that's playing (below "Now Playing") to see how long you've listened to the song. It does not take into account the time you've paused, and doesn't keep track of listening to nothing.
 - You can click the countdown (to the right of "Time until next song") to reset it. Useful for when you want to listen a song a bit longer but still leave the timer running.
+- You can set your selected playlist to blank to randomly play any song rather than just the ones selected in the currently selected playlist.
 - If you get a `Script error`, it's most likely that `config.json` isn't formatted right. Use a JSON parser to make sure that it's working before submitting a bug report.
 - Make sure to optimize your icons to fit a small screen (something around 500x340).
 
@@ -74,13 +75,52 @@ One last thing to note, paths to icons and audio files are relative to the `src`
 - Try to keep everything in a self-contained object in the code. It makes it less of a headache to modify stuff.
 - Uses Express for a simple web server in order to conveniently allow XMLHttpRequests. If you want to, you can just use the files in `src/`, delete everything else, then host the server yourself however you want.
 - As for GitHub releases, there'll be a set of packs per incompatible version. Inside each zipped archive, there'll be a folder named `pack` and its contents will replace the top-level files.
+- There were quite a few points to consider when making the fading system.
+	- To make my life much much easier, I use two `gainNode`s: One for the volume which the user will always be able to control, and the other for fading which will only be affected by pausing and switching songs. Since the two are multiplied together, you don't have to mess with complicated volume locks or multiplying the values yourself based on an interval. It just works, and much better than if I were to do it manually.
+	- There's a timeout ID per song, because after the fade duration passes, a timeout function will be called to suspend or resume the context. However, if you're going to be cancelling the pause, then you'd want to cancel the context suspend as well.
+	- Pausing and resuming is pretty simple when it's all during a song.
+		- Pausing will cancel all ongoing fades, then fade out and pause after the fade duration passes.
+		- Resuming will cancel all ongoing fades, then fade in and resume the music at the same time.
+	- Switching songs is when things get complicated.
+		- .
+		- 
+		- 
+	- Here's what happens when you switch a song while the music is pausing/resuming.
+		- .
+		- 
+		- 
+	- And there are extra steps to consider when switching songs while the countdown is activating the transition automatically.
+		- .
+		- 
+		- 
 
 ## Structure
 - [Class] `Song` - Instantiate it with a track object and it'll automatically start playing a song until it's destroyed.
-- [Object] `Timer` - Manages everything related to the countdown timer to switch songs. The code for switching songs is in `App.initialization()`.
+- [Object] `Timer` - Manages everything related to the countdown timer to switch songs.
 - [Object] `MusicPlayer` - Manages whichever song is currently playing as well as fading between songs and volume control for the currently playing song.
 - [Object] `App` - It's the object for everything related to the document and serves as the interface to the rest of the actual program.
 
 # Future Features (Maybe)
 - A playlist manager/editor, letting you not only select playlists, but also letting you edit playlists and copy their results to paste them in your config. Docked in the upper-left hand corner. This playlist will show a menu on hover/click showing the playlist names, then hovering on a playlist will open a menu to the side letting you see which songs are in it and letting you add/remove songs.
 - An ability to queue songs and shuffle playlists (but also be able to change their order once shuffled).
+
+```
+Playlist Editor: List of checkboxes determining which songs are allowed based on the list of tracks. Then it autogenerates an array you copy into it.
+
+{"playlist name": [1,2,3,4,5]}
+
+Use this format because the string key might have escaped characters. Then to make it easier, prepend a "playlists": so users know where to put it.
+
+Also, add and remove playlists based on the current thing. And set the default playlist.
+
+	"defaultPlaylist": "main",
+	"playlists":
+	{
+		"main": [3,5,8],
+		"playlist name": [1,2,3,4,5]
+	}
+
+Playlist Editor button to the right of playlists.
+
+Hover over an entry to see its full name, otherwise you'll just see the start of it.
+```
