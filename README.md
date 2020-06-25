@@ -109,6 +109,7 @@ One last thing to note, paths to icons and audio files are relative to the `src`
 - [Object] `App` - It's the object for everything related to the document and serves as the interface to the rest of the actual program.
 
 # Future Features (Maybe)
+- A fading out system when switching songs as described in the specifications.
 - A playlist manager/editor, letting you not only select playlists, but also letting you edit playlists and copy their results to paste them in your config. Docked in the upper-left hand corner. This playlist will show a menu on hover/click showing the playlist names, then hovering on a playlist will open a menu to the side letting you see which songs are in it and letting you add/remove songs.
 - An ability to queue songs and shuffle playlists (but also be able to change their order once shuffled).
 

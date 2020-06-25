@@ -371,7 +371,7 @@ const App = {
 			throw "Sorry, your browser doesn't support the Web Audio API!";
 		
 		let request = new XMLHttpRequest();
-		request.open("GET", "assets/config.json");
+		request.open("GET", "config.json");
 		request.onload = () => {
 			// Load the list of tracks and their metadata, but don't load buffers into memory all at once since it hogs up at least 3 GB of memory.
 			let config = JSON.parse(request.responseText);
