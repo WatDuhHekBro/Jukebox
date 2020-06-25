@@ -1,0 +1,192 @@
+html, body
+{
+	height: 100%;
+	margin: 0;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: cover;
+	image-rendering: pixelated;
+	cursor: default;
+}
+
+*::selection
+{
+	background-color: rgba(0, 0, 0, 0);
+}
+
+#player
+{
+	position: absolute;
+	width: 80%;
+	left: 10%;
+	height: 50%;
+	top: 25%;
+	background-color: lightgray;
+	background-image: url(icon.png);
+	background-position: center;
+	background-repeat: no-repeat;
+	border-radius: 25px;
+	text-align: center;
+	font-size: 2em;
+}
+
+#player *
+{
+	margin: 0.25em;
+}
+
+.tag
+{
+	animation: rainbow 15s linear 0s infinite normal;
+	border-radius: 5px;
+	padding: 0 5px;
+	/* Used to override the specificity of "#player *". I should probably find a better way. */
+	margin: 0 !important;
+}
+
+@keyframes rainbow
+{
+	0% {background-color: red; color: white;}
+	12% {background-color: orange; color: black;}
+	25% {background-color: yellow; color: black;}
+	50% {background-color: green; color: white;}
+	67% {background-color: blue; color: white;}
+	83% {background-color: violet; color: white;}
+	100% {background-color: red; color: white;}
+}
+
+#bottom
+{
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	text-align: center;
+	/* Wait until initialization is done (and if it doesn't, then the program isn't loading properly). */
+	display: none;
+}
+
+#countdown
+{
+	margin: 0;
+}
+
+#slider
+{
+	top: 5%;
+	right: 5%;
+	max-width: 2.5em;
+	position: absolute;
+	border-radius: 15px;
+}
+
+#slider *
+{
+	display: block;
+}
+
+#playlistEditor
+{
+	position: absolute;
+	margin: 0;
+	top: 0;
+	left: -35%;
+	width: 35%;
+	height: 100%;
+	max-width: 300px;
+	background-color: darkgray;
+	font-size: 1em;
+	text-align: center;
+	border-radius: 10px;
+	transition: left 0.5s ease-out;
+}
+
+#playlistEditor.active
+{
+	left: 0;
+}
+
+#playlistEditor *
+{
+	margin: 0;
+}
+
+/*#playlistList
+{
+	
+}
+
+#playlistEntries
+{
+	
+}*/
+
+.button
+{
+	cursor: pointer;
+}
+
+.grab
+{
+	cursor: grab;
+}
+
+.grab:active
+{
+	cursor: grabbing;
+}
+
+input[type=range]
+{
+	-webkit-appearance: slider-vertical;
+	width: 100%;
+}
+
+#error
+{
+	background-color: red;
+	text-align: center;
+	margin: 0;
+	padding: 5px;
+	display: none;
+}
+
+@media only screen and (max-width: 600px)
+{
+	*
+	{
+		margin: 0;
+	}
+	
+	#player
+	{
+		height: 100%;
+		width: 100%;
+		position: absolute;
+		top: 0;
+		left: 0;
+		font-size: 1em;
+		overflow: hidden;
+	}
+	
+	#slider
+	{
+		position: absolute;
+		top: 0;
+		right: 0;
+	}
+	
+	#playlistEditor
+	{
+		width: 25%;
+		font-size: 0.5em;
+	}
+	
+	#error
+	{
+		position: absolute;
+		bottom: 0;
+		/* I don't know why, but making the position absolute takes away its existing width and turns it into a tiny box. */
+		width: 100%;
+		padding: 0;
+	}
+}
