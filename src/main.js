@@ -253,23 +253,35 @@ const MusicPlayer = {
 	currentSong: null, // Song instance
 	currentTrack: null,
 	currentTrackIndex: -1,
+	nextTrack: null,
+	nextTrackIndex: -1,
+	timeout: 0,
 	// When MusicPlayer.play is called multiple times in rapid succession, it will reset its internal delay so you get the effect of having it be silent until you settle on a song you like.
-	play(index)
+	play()
+	{
+		if(this.nextTrackIndex === -1 || !this.nextTrack)
+			throw `Error: The next track was attempted to be played before it was set!`;
+		this.currentTrack = this.nextTrack;
+		this.nextTrack = null;
+		this.currentTrackIndex = this.nextTrackIndex;
+		this.nextTrackIndex = -1;
+		this.currentSong = new Song(this.currentTrack, this.volume);
+		Timer.start();
+	},
+	set(index)
 	{
 		if(index < 0 || index >= this.tracks.length)
 			throw `Index out of bounds! Index ${index} was given to MusicPlayer.play, but the length of its array is ${this.tracks.length}.`;
-		this.currentTrack = this.tracks[index];
-		this.currentSong = new Song(this.currentTrack, this.volume);
-		this.currentTrackIndex = index;
-		Timer.start();
+		this.nextTrack = this.tracks[index];
+		this.nextTrackIndex = index;
 	},
 	// It isn't a good type of random for this, it's better to make a shuffled queue and play that instead because a song can appear multiple times in rapid succession.
-	playRandom()
+	setRandom()
 	{
 		if(this.currentPlaylist)
-			this.play(this.currentPlaylist[Math.floor(Math.random() * this.currentPlaylist.length)]);
+			this.set(this.currentPlaylist[Math.floor(Math.random() * this.currentPlaylist.length)]);
 		else
-			this.play(Math.floor(Math.random() * this.tracks.length));
+			this.set(Math.floor(Math.random() * this.tracks.length));
 	},
 	stop()
 	{
@@ -279,6 +291,19 @@ const MusicPlayer = {
 		this.currentTrackIndex = -1;
 		Timer.stop();
 		App.resetTimer(); // I know, I know. I said I'd keep everything separate, but it'd be a lot more convenient just to access App this one time.
+	},
+	setDelay(callback, isPaused = false)
+	{
+		if(isPaused)
+			callback && callback();
+		else
+		{
+			clearTimeout(this.timeout);
+			this.timeout = setTimeout(() => {
+				this.timeout = 0;
+				callback && callback();
+			}, this.fadeDuration * 1000);
+		}
 	},
 	setVolume(value)
 	{
@@ -311,31 +336,35 @@ const MusicPlayer = {
 	{
 		return (this.currentSong && Timer.getFormattedTime(Math.floor(this.currentSong.context.currentTime))) || "N/A";
 	},
-	getIcon()
+	getIcon(track)
 	{
-		if(this.currentTrack && this.currentTrack.icon)
-			return `url(${this.currentTrack.icon})`;
+		if(track && track.icon)
+			return `url(${track.icon})`;
 		else
 			return "url(icon.png)";
 	},
 	// e.g. "CrossCode - The Path of Justice"
-	toString()
+	getFormattedHTML(track)
 	{
 		let output = "<i>None</i>";
 		
-		if(this.currentTrack)
+		if(track)
 		{
 			if(this.displayFormat)
 			{
 				output = this.displayFormat.replace(/\$\$/g, '\u0000');
-				output = output.replace(/\$name/g, this.currentTrack.name || "").replace(/\$game/g, this.currentTrack.game || "");
+				output = output.replace(/\$name/g, track.name || "").replace(/\$game/g, track.game || "");
 				output = output.replace(/\u0000/g, '$');
 			}
 			else
-				output = `${this.currentTrack.game} - ${this.currentTrack.name}`;
+				output = `${track.game} - ${track.name}`;
 		}
 		
 		return output;
+	},
+	toString()
+	{
+		return this.getFormattedHTML(this.currentTrack);
 	}
 };
 
@@ -357,9 +386,12 @@ const App = {
 	banner: document.getElementById("error"),
 	silence: null, // This is an HTML audio element that'll be used to activate Chrome's global media controls as a workaround because the WebAudio API can't.
 	isPaused: true,
+	isFading: false,
 	isMuted: false,
 	inTrackingMode: false,
+	countdownActivated: false,
 	interval: 0,
+	timeout: 0,
 	initialize()
 	{
 		window.onerror = (message, source, line, column, error) => {
@@ -371,7 +403,7 @@ const App = {
 			throw "Sorry, your browser doesn't support the Web Audio API!";
 		
 		let request = new XMLHttpRequest();
-		request.open("GET", "config.json");
+		request.open("GET", "assets/config.json");
 		request.onload = () => {
 			// Load the list of tracks and their metadata, but don't load buffers into memory all at once since it hogs up at least 3 GB of memory.
 			let config = JSON.parse(request.responseText);
@@ -437,8 +469,12 @@ const App = {
 			Timer.setListener(seconds => {
 				this.timer.innerText = Timer.toString();
 				
-				if(seconds <= 0)
+				// It captures everything below the threshold as well in order to activate the countdown again if you resume in that countdown threshold.
+				if(seconds <= MusicPlayer.fadeDuration && !this.countdownActivated)
+				{
 					this.setSong();
+					this.countdownActivated = true;
+				}
 			});
 			this.chromeGlobalMediaControlsInit();
 			
@@ -451,19 +487,26 @@ const App = {
 	// Document-only function, called by App.trackMenu.
 	setSong(index, skipChangingMenu = false)
 	{
-		// temporary code below
-		MusicPlayer.stop();
+		MusicPlayer.pause(this.isMuted);
 		
 		if(index === undefined)
-			MusicPlayer.playRandom();
+			MusicPlayer.setRandom();
 		else if(index >= 0)
-			MusicPlayer.play(index);
+			MusicPlayer.set(index);
 		
-		this.setDisplaySong(skipChangingMenu);
-		this.isPaused = false;
+		this.setDisplaySong(skipChangingMenu, true);
 		this.pauseButton.innerText = this.getPausedIcon(false);
-		this.setTrackingMode(false);
+		clearInterval(this.interval); // Clear Tracking Mode
+		this.interval = 0; // Clear Tracking Mode
 		this.silence && this.silence.play();
+		
+		MusicPlayer.setDelay(() => {
+			Timer.stop();
+			this.resetTimer();
+			MusicPlayer.play();
+			this.isPaused = false;
+			this.countdownActivated = false;
+		}, (this.isPaused && !this.isFading) || !MusicPlayer.currentSong);
 	},
 	setPlaylist(name)
 	{
@@ -478,6 +521,7 @@ const App = {
 	{
 		this.isPaused = !this.isPaused;
 		this.pauseButton.innerText = this.getPausedIcon(this.isPaused);
+		this.isFading = true;
 		
 		// Prevent this function from changing the volume if it's muted. It still pauses and plays though, just at 0 volume.
 		if(this.isPaused)
@@ -485,6 +529,12 @@ const App = {
 			MusicPlayer.pause(this.isMuted);
 			Timer.stop();
 			this.silence && this.silence.pause();
+			
+			if(this.countdownActivated)
+			{
+				clearTimeout(MusicPlayer.timeout);
+				MusicPlayer.timeout = 0;
+			}
 		}
 		else
 		{
@@ -494,7 +544,24 @@ const App = {
 				Timer.start();
 			
 			this.silence && this.silence.play();
+			
+			if(this.countdownActivated)
+			{
+				if(Timer.seconds <= MusicPlayer.fadeDuration)
+					this.setSong(MusicPlayer.currentTrackIndex, true);
+				else
+				{
+					this.setDisplaySong(true);
+					this.countdownActivated = false;
+				}
+			}
 		}
+		
+		clearTimeout(this.timeout);
+		this.timeout = setTimeout(() => {
+			this.isFading = false;
+			this.timeout = 0;
+		}, MusicPlayer.fadeDuration * 1000);
 	},
 	toggleMute()
 	{
@@ -515,11 +582,29 @@ const App = {
 			else
 				Timer.stop();
 		}
+		
+		if(this.countdownActivated)
+		{
+			MusicPlayer.resume(this.isMuted);
+			clearTimeout(MusicPlayer.timeout);
+			MusicPlayer.timeout = 0;
+			this.setDisplaySong(true);
+			this.countdownActivated = false;
+		}
 	},
 	resetTimer()
 	{
 		Timer.reset();
 		this.timer.innerText = Timer.toString();
+		
+		if(this.countdownActivated)
+		{
+			MusicPlayer.resume(this.isMuted);
+			clearTimeout(MusicPlayer.timeout);
+			MusicPlayer.timeout = 0;
+			this.setDisplaySong(true);
+			this.countdownActivated = false;
+		}
 	},
 	// Leave empty for a toggle.
 	setTrackingMode(value)
@@ -540,12 +625,13 @@ const App = {
 			this.interval = 0;
 		}
 	},
-	setDisplaySong(calledFromDocument = false)
+	setDisplaySong(calledFromDocument = false, getNext = false)
 	{
-		let track = MusicPlayer.currentTrack;
+		let track = getNext ? MusicPlayer.nextTrack : MusicPlayer.currentTrack;
 		document.title = track ? `🎵 ${track.name} 🎵` : "Jukebox";
-		this.songName.innerHTML = MusicPlayer.toString();
-		this.playerDisplay.style.backgroundImage = MusicPlayer.getIcon();
+		this.songName.innerHTML = MusicPlayer.getFormattedHTML(track);
+		console.log(MusicPlayer.getIcon(track));
+		this.playerDisplay.style.backgroundImage = MusicPlayer.getIcon(track);
 		
 		if(!calledFromDocument)
 			this.trackMenu.value = MusicPlayer.currentTrackIndex;
