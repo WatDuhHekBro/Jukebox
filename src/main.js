@@ -24,11 +24,11 @@ class Song
 				this.fade.connect(this.context.destination);
 				
 				// The delay should sync up for both the intro and the main if there's an intro, so nest those calls to chain them together.
-				Song.request(track.introPath, this.context).then(buffer => {
+				this.request(track.introPath).then(buffer => {
 					if(this.isDestroyed)
 						return;
 					introSource.buffer = buffer;
-					return Song.request(track.path, this.context);
+					return this.request(track.path);
 				}).then(buffer => {
 					if(this.isDestroyed)
 						return;
@@ -42,7 +42,7 @@ class Song
 			else
 			{
 				// Even and odd offsets which will keep the cycle going.
-				Song.request(track.path, this.context).then(buffer => {
+				this.request(track.path).then(buffer => {
 					if(this.isDestroyed)
 						return;
 					// Nonetheless, you still have to account for the delay. A considerable amount of time passes between the request and the access.
@@ -58,7 +58,7 @@ class Song
 		}
 		else
 		{
-			Song.request(track.path, this.context).then(buffer => {
+			this.request(track.path).then(buffer => {
 				if(this.isDestroyed)
 					return;
 				let source = this.context.createBufferSource();
@@ -87,6 +87,7 @@ class Song
 			this.timeout = setTimeout(() => {
 				if(!this.isDestroyed)
 					this.context.suspend();
+				this.timeout = 0;
 			}, duration * 1000);
 		}
 	}
@@ -127,7 +128,7 @@ class Song
 		source.onended = () => {this.playOneLoop(buffer, loopEnd, delay, loopCount + 2)};
 		source.start(loopCount * loopEnd + delay);
 	}
-	static request(path, context)
+	request(path)
 	{
 		return new Promise((resolve, reject) => {
 			let request = new XMLHttpRequest();
@@ -138,7 +139,7 @@ class Song
 				{
 					if(request.status === 200)
 					{
-						context.decodeAudioData(request.response)
+						this.context.decodeAudioData(request.response)
 						.then(buffer => resolve(buffer))
 						.catch(reject);
 					}
@@ -247,9 +248,10 @@ const MusicPlayer = {
 	fadeDuration: 5,
 	tracks: [],
 	playlists: {},
+	displayFormat: "$game - $name",
 	currentPlaylist: null, // Array of track indexes
-	currentTrack: null,
 	currentSong: null, // Song instance
+	currentTrack: null,
 	currentTrackIndex: -1,
 	// When MusicPlayer.play is called multiple times in rapid succession, it will reset its internal delay so you get the effect of having it be silent until you settle on a song you like.
 	play(index)
@@ -312,7 +314,7 @@ const MusicPlayer = {
 	getIcon()
 	{
 		if(this.currentTrack && this.currentTrack.icon)
-			return this.currentTrack.icon;
+			return `url(${this.currentTrack.icon})`;
 		else
 			return "url(icon.png)";
 	},
@@ -322,7 +324,16 @@ const MusicPlayer = {
 		let output = "<i>None</i>";
 		
 		if(this.currentTrack)
-			output = `<span class="tag">${this.currentTrack.game}</span> ${this.currentTrack.name}`;
+		{
+			if(this.displayFormat)
+			{
+				output = this.displayFormat.replace(/\$\$/g, '\u0000');
+				output = output.replace(/\$name/g, this.currentTrack.name || "").replace(/\$game/g, this.currentTrack.game || "");
+				output = output.replace(/\u0000/g, '$');
+			}
+			else
+				output = `${this.currentTrack.game} - ${this.currentTrack.name}`;
+		}
 		
 		return output;
 	}
@@ -344,8 +355,8 @@ const App = {
 	volumeSpeaker: document.getElementById("speaker"),
 	playlistEditor: document.getElementById("playlistEditor"),
 	banner: document.getElementById("error"),
-	silence: null, // This is an HTML audio element that'll be used to activate Chrome's global media controls since the WebAudio API can't.
-	isPaused: false,
+	silence: null, // This is an HTML audio element that'll be used to activate Chrome's global media controls as a workaround because the WebAudio API can't.
+	isPaused: true,
 	isMuted: false,
 	inTrackingMode: false,
 	interval: 0,
@@ -360,7 +371,7 @@ const App = {
 			throw "Sorry, your browser doesn't support the Web Audio API!";
 		
 		let request = new XMLHttpRequest();
-		request.open("GET", "config.json");
+		request.open("GET", "assets/config.json");
 		request.onload = () => {
 			// Load the list of tracks and their metadata, but don't load buffers into memory all at once since it hogs up at least 3 GB of memory.
 			let config = JSON.parse(request.responseText);
@@ -371,6 +382,7 @@ const App = {
 			if("startWithTimer" in config) Timer.enabled = !!config.startWithTimer;
 			if("defaultPlaylist" in config) defaultPlaylist = config.defaultPlaylist;
 			if("playlists" in config) MusicPlayer.playlists = config.playlists;
+			if("displayFormat" in config) MusicPlayer.displayFormat = config.displayFormat;
 			if("tracks" in config) MusicPlayer.tracks = config.tracks;
 			
 			// Tracks //
@@ -533,7 +545,7 @@ const App = {
 		let track = MusicPlayer.currentTrack;
 		document.title = track ? `🎵 ${track.name} 🎵` : "Jukebox";
 		this.songName.innerHTML = MusicPlayer.toString();
-		this.playerDisplay.style.backgroundImage = (track && track.icon) ? `url(${track.icon})` : "url(icon.png)";
+		this.playerDisplay.style.backgroundImage = MusicPlayer.getIcon();
 		
 		if(!calledFromDocument)
 			this.trackMenu.value = MusicPlayer.currentTrackIndex;
@@ -596,7 +608,7 @@ const App = {
 			navigator.mediaSession.metadata = new MediaMetadata({
 				album: "Jukebox",
 				title: MusicPlayer.currentTrack && MusicPlayer.currentTrack.name || "None",
-				artist: MusicPlayer.currentTrack && MusicPlayer.currentTrack.game || "None",
+				artist: MusicPlayer.currentTrack && MusicPlayer.currentTrack.game || "",
 				// I decided to just stick with icon.png. I know for certain that it'll be 128x128, plus, I've noticed that other icons tend to be quite inconsistent.
 				artwork: [{
 					src: "icon.png",
@@ -610,10 +622,9 @@ const App = {
 		if("mediaSession" in navigator)
 		{
 			this.silence = new Audio();
-			// There's some threshold that determines whether or not the global media controls show. 5 seconds works and doesn't take too long to load.
-			this.silence.src = "https://raw.githubusercontent.com/anars/blank-audio/master/5-seconds-of-silence.mp3";
+			// Seems like 5 seconds is the threshold determining whether or not Chrome's global media controls appear.
+			this.silence.src = "silence.mp3";
 			this.silence.loop = true;
-			this.silence.play().then(() => {this.silence.pause()}); // Initialize the silence to appear.
 			navigator.mediaSession.setActionHandler("play", () => {this.togglePause()});
 			navigator.mediaSession.setActionHandler("pause", () => {this.togglePause()});
 			navigator.mediaSession.setActionHandler("nexttrack", () => {this.setSong()});

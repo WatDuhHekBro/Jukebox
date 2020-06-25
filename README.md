@@ -1,5 +1,5 @@
 # cc-music-player is gone
-Its purpose was to play music from CrossCode which uses complex looping to play its music for an indefinite amount of time. However, it was basically a band-aid solution for not learning the WebAudio API, and had a system that wasn't user-friendly (meaning you had to use the console or reload the game). So from its ashes rose the new...
+Its purpose was to play music from CrossCode which uses complex looping to play its music for an indefinite amount of time. However, it was basically a band-aid solution for not learning the Web Audio API, and had a system that wasn't user-friendly (meaning you had to use the console or reload the game). So from its ashes rose the new...
 
 # Jukebox
 This is a standalone program that provides a GUI for playing songs with complex looping for an indefinite amount of time. I decided not to incorporate non-looping songs as there are plenty of great music players out there, the specific niche of this one is that it makes use of perfect loops, perfect for music from games.
@@ -19,17 +19,19 @@ While these two programs use completely different systems, they both ultimately 
 - You can click the name of the current song that's playing (below "Now Playing") to see how long you've listened to the song. It does not take into account the time you've paused, and doesn't keep track of listening to nothing.
 - You can click the countdown (to the right of "Time until next song") to reset it. Useful for when you want to listen a song a bit longer but still leave the timer running.
 - You can set your selected playlist to blank to randomly play any song rather than just the ones selected in the currently selected playlist.
+- If you're using Google Chrome or another browser that supports the Media Session API, the jukebox will work with it to let you control the music from any tab.
 - If you get a `Script error`, it's most likely that `config.json` isn't formatted right. Use a JSON parser to make sure that it's working before submitting a bug report.
 - Make sure to optimize your icons to fit a small screen (something around 500x340).
 
 # Configuration
-There are 7 properties your `config.json` can have, and the only required one is `tracks`:
+There are 8 properties your `config.json` can have, and the only required one is `tracks`:
 - `defaultVolume`: An integer between 0 to 100 which is the percentage volume the program should start with. (Default: `50%`)
 - `fadeDuration`: A number 0 or greater that determines how long the music will fade out for when pausing and switching songs. (Default: `5 seconds`)
 - `timeBetweenSongs`: An integer 0 or greater determining how long the countdown timer will run for until the next song, if the timer is enabled. (Default: `3 minutes`)
 - `startWithTimer`: A boolean determining whether the timer is automatically enabled or not. (Default: `false`)
 - `defaultPlaylist`: A string determining which playlist to select if the selected playlist exists. (Default: `<empty>`)
 - `playlists`: An object pairing each playlist name with an array denoting the indexes of the tracks that are allowed to play in that playlist. For example, you'd use index 0 to reference the first track, 1 to reference the second track, and so on. (Default: `<empty>`)
+- `displayFormat`: A string representing that format that should be used to display the game and name together. `$game` and `$name` gets the "game" and "name" tags on the selected track respectively. To make an actual dollar sign, use `$$`. (Default: `"$game - $name"`, Recommended format for use with custom CSS (it's a rainbow tag by default): `"<span class=\"tag\">$game</span> $name"`)
 - `tracks`: An array of objects where each object holds track metadata (more info below). (Default: `<empty>`)
 
 ## Track Metadata
@@ -82,17 +84,23 @@ One last thing to note, paths to icons and audio files are relative to the `src`
 		- Pausing will cancel all ongoing fades, then fade out and pause after the fade duration passes.
 		- Resuming will cancel all ongoing fades, then fade in and resume the music at the same time.
 	- Switching songs is when things get complicated.
-		- .
-		- 
-		- 
+	- Firstly, switching to another song will make the music fade out for the fade duration. Fading out is a one time action though, and will not be repeated by switching to another song afterward.
+	- Secondly, to support switching between multiple songs, there'll be a delay that'll occur (same as the fade duration) **but will be reset every time you switch songs during that time frame**. So you can keep clicking next until you find one that suits you.
 	- Here's what happens when you switch a song while the music is pausing/resuming.
-		- .
-		- 
-		- 
-	- And there are extra steps to consider when switching songs while the countdown is activating the transition automatically.
-		- .
-		- 
-		- 
+		- Switching songs while the music is pausing will skip the fade out and set the delay.
+		- Switching songs while the music is resuming will cancel that fade in, begin fading out, then set the delay.
+		- Switching songs while the music is paused will immediately go to the next song, skipping the delay.
+	- Now for a moment, disregard manually switching to another song and just focus on the specifics of what happens when the timer counts down. The countdown activates its fade out and delay for the length of the fade duration before 0 seconds.
+		- If everything remains the same, both the fade out and delay are activated.
+		- If the music is paused during this time, the fade out continues but the delay is cancelled.
+		- If the music is then resumed after being paused, then one of two things will happen.
+			- If the countdown is less than the fade duration, the music fades back in briefly and the delay is set.
+			- If the countdown is greater than the fade duration (by resetting the timer), the music fades back in and the delay is skipped.
+		- If the timer is disabled or reset during this time, then it acts as a resume action, with the music fading back in and the delay being cancelled.
+	- So there are a few extra steps to consider when switching songs while the countdown is activating the transition automatically.
+		- Since the fade out is already taken care of by the countdown, just set a delay.
+		- Pausing and then switching will continue with the existing fade out and reset the existing delay.
+		- Resuming and then switching should be taken care of as part of the countdown's fade out and delay.
 
 ## Structure
 - [Class] `Song` - Instantiate it with a track object and it'll automatically start playing a song until it's destroyed.
