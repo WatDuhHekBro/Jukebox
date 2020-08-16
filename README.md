@@ -1,6 +1,3 @@
-# cc-music-player is gone
-Its purpose was to play music from CrossCode which uses complex looping to play its music for an indefinite amount of time. However, it was basically a band-aid solution for not learning the Web Audio API, and had a system that wasn't user-friendly (meaning you had to use the console or reload the game). So from its ashes rose the new...
-
 # Jukebox
 This is a standalone program that provides a GUI for playing songs with complex looping for an indefinite amount of time. I decided not to incorporate non-looping songs as there are plenty of great music players out there, the specific niche of this one is that it makes use of perfect loops, perfect for music from games.
 
