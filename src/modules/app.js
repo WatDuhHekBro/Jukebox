@@ -86,7 +86,7 @@ const App = {
 					MusicPlayer.setPlaylist(defaultPlaylist);
 					this.playlistMenu.value = defaultPlaylist;
 				}
-				else
+				else if(defaultPlaylist !== "")
 					console.warn(`"${defaultPlaylist}" is not a valid playlist!`);
 			}
 			

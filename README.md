@@ -4,7 +4,7 @@ This is a standalone program that provides a GUI for playing songs with complex 
 ## Why replace cc-music-player?
 While these two programs use completely different systems, they both ultimately achieve the same goal. I decided that it'd be better than archiving `cc-music-player` or deleting it entirely. I'll keep around the old release for historical purposes, but it won't represent the latest version. Furthermore, this is a better implementation IMO since you don't need CrossCode to use it, you only need it to play its music if you're planning on listening to CrossCode music.
 
-# Credits (Music Packs)
+# Credits (Music)
 ## CrossCode
 - Composer: Deniz Akbulut / @interovgm
 - [CrossCode (Original Game Soundtrack)](https://interovgm.bandcamp.com/album/crosscode-original-game-soundtrack)
