@@ -1,19 +1,16 @@
 # Jukebox
 This is a standalone program that provides a GUI for playing songs with complex looping for an indefinite amount of time. I decided not to incorporate non-looping songs as there are plenty of great music players out there, the specific niche of this one is that it makes use of perfect loops, perfect for music from games.
 
-## Why replace cc-music-player?
-While these two programs use completely different systems, they both ultimately achieve the same goal. I decided that it'd be better than archiving `cc-music-player` or deleting it entirely. I'll keep around the old release for historical purposes, but it won't represent the latest version. Furthermore, this is a better implementation IMO since you don't need CrossCode to use it, you only need it to play its music if you're planning on listening to CrossCode music.
+# How To Use
+1. Start a local server environment, [http-server](https://www.npmjs.com/package/http-server) for example.
+2. Either download a preconfigured music pack or make your own using the instructions below.
+3. Go to `localhost` in your browser.
 
 # Credits (Music)
 ## CrossCode
 - Composer: Deniz Akbulut / @interovgm
 - [CrossCode (Original Game Soundtrack)](https://interovgm.bandcamp.com/album/crosscode-original-game-soundtrack)
 - [CrossCode Original Soundtrack EX](https://interovgm.bandcamp.com/album/crosscode-original-soundtrack-ex)
-
-# How To Use
-1. Start a local server environment, [http-server](https://www.npmjs.com/package/http-server) for example.
-2. Either download a preconfigured music pack or make your own using the instructions below.
-3. Go to `localhost` in your browser.
 
 ## Notes
 - You can click the name of the current song that's playing (below "Now Playing") to see how long you've listened to the song. It does not take into account the time you've paused, and doesn't keep track of listening to nothing.
@@ -25,7 +22,6 @@ While these two programs use completely different systems, they both ultimately 
 
 # Configuration
 There are 8 properties your `config.json` can have, and the only required one is `tracks`:
-- `defaultVolume`: An integer between 0 to 100 which is the percentage volume the program should start with. (Default: `50%`)
 - `fadeDuration`: A number 0 or greater that determines how long the music will fade out for when pausing and switching songs. (Default: `5 seconds`)
 - `timeBetweenSongs`: An integer 0 or greater determining how long the countdown timer will run for until the next song, if the timer is enabled. (Default: `3 minutes`)
 - `startWithTimer`: A boolean determining whether the timer is automatically enabled or not. (Default: `false`)

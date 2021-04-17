@@ -1,7 +1,7 @@
 "use strict";
 
 const MusicPlayer = {
-	volume: 0.5,
+	volume: 1,
 	fadeDuration: 5,
 	tracks: [],
 	playlists: {},
@@ -39,6 +39,9 @@ const MusicPlayer = {
 	},
 	setVolume(value)
 	{
+		localStorage.setItem("Jukebox", JSON.stringify({
+			defaultVolume: value * 100
+		}));
 		this.currentSong && this.currentSong.setVolume(value);
 		this.volume = Song.capVolume(value);
 	},
@@ -79,7 +82,7 @@ const MusicPlayer = {
 	toString()
 	{
 		let output = "<i>None</i>";
-		
+
 		if(this.currentTrack)
 		{
 			if(this.displayFormat)
@@ -91,7 +94,7 @@ const MusicPlayer = {
 			else
 				output = `${this.currentTrack.game} - ${this.currentTrack.name}`;
 		}
-		
+
 		return output;
 	}
 };
