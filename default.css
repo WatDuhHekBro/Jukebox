@@ -2,11 +2,19 @@ html, body
 {
 	height: 100%;
 	margin: 0;
+	background-color: #121212;
 	background-position: center;
 	background-repeat: no-repeat;
 	background-size: cover;
-	image-rendering: pixelated;
+	image-rendering: optimizeSpeed;             /* Older versions of FF          */
+	image-rendering: -moz-crisp-edges;          /* FF 6.0+                       */
+	image-rendering: -webkit-optimize-contrast; /* Safari                        */
+	image-rendering: -o-crisp-edges;            /* OS X & Windows Opera (12.02+) */
+	image-rendering: pixelated;                 /* Awesome future-browsers       */
+	-ms-interpolation-mode: nearest-neighbor;   /* IE                            */
 	cursor: default;
+	color: white;
+	text-shadow: 0 0 10px white;
 }
 
 *::selection
@@ -21,7 +29,7 @@ html, body
 	left: 10%;
 	height: 50%;
 	top: 25%;
-	background-color: lightgray;
+	background-color: #202020;
 	background-image: url(icon.png);
 	background-position: center;
 	background-repeat: no-repeat;
@@ -110,16 +118,6 @@ html, body
 	margin: 0;
 }
 
-/*#playlistList
-{
-	
-}
-
-#playlistEntries
-{
-	
-}*/
-
 .button
 {
 	cursor: pointer;
@@ -137,7 +135,7 @@ html, body
 
 input[type=range]
 {
-	-webkit-appearance: slider-vertical;
+	appearance: slider-vertical; /* Will not work on Firefox, instead, set HTML attribute orient="vertical" */
 	width: 100%;
 }
 
@@ -156,7 +154,7 @@ input[type=range]
 	{
 		margin: 0;
 	}
-	
+
 	#player
 	{
 		height: 100%;
@@ -167,20 +165,20 @@ input[type=range]
 		font-size: 1em;
 		overflow: hidden;
 	}
-	
+
 	#slider
 	{
 		position: absolute;
 		top: 0;
 		right: 0;
 	}
-	
+
 	#playlistEditor
 	{
 		width: 25%;
 		font-size: 0.5em;
 	}
-	
+
 	#error
 	{
 		position: absolute;

@@ -10,7 +10,7 @@ class Song
 		this.timeout = 0;
 		this.isDestroyed = false;
 		this.setVolume(volume);
-		
+
 		// Play Song //
 		// This is integrated into the constructor because especially for complex looping, delaying the song will mess with context.currentTime which'll in turn mess with looping.
 		if(track.complexLooping)
@@ -22,7 +22,7 @@ class Song
 				introSource.connect(this.volume);
 				this.volume.connect(this.fade);
 				this.fade.connect(this.context.destination);
-				
+
 				// The delay should sync up for both the intro and the main if there's an intro, so nest those calls to chain them together.
 				this.request(track.introPath).then(buffer => {
 					if(this.isDestroyed)
@@ -81,7 +81,13 @@ class Song
 			this.context.suspend();
 		else
 		{
-			this.fade.gain.cancelAndHoldAtTime(0); // Change it ASAP so the effects are instant.
+			// Cancel any ongoing fading so the user can instantly pause/resume but keep the value of this.fade.gain.value.
+			// cancelAndHoldAtTime can be used but it doesn't work in Firefox.
+			// So instead, cancelScheduledValues is used and the value is held to replicate that behavior.
+			const heldValue = this.fade.gain.value;
+			this.fade.gain.cancelScheduledValues(0);
+			this.fade.gain.setValueAtTime(heldValue, 0);
+
 			this.fade.gain.linearRampToValueAtTime(this.fade.gain.value, 0); // Okay, so for some odd reason, if you fully resume and then you pause, the next linearRampToValueAtTime will be instant regardless of the fact that you're setting it relative to the context's currentTime. However, a quick fix for this is to call it once so that the next linearRampToValueAtTime works as intended.
 			this.fade.gain.linearRampToValueAtTime(0, this.context.currentTime + duration);
 			this.timeout = setTimeout(() => {
@@ -97,7 +103,10 @@ class Song
 			this.context.resume();
 		else
 		{
-			this.fade.gain.cancelAndHoldAtTime(0); // Change it ASAP so the effects are instant.
+			const heldValue = this.fade.gain.value;
+			this.fade.gain.cancelScheduledValues(0);
+			this.fade.gain.setValueAtTime(heldValue, 0);
+
 			this.fade.gain.linearRampToValueAtTime(1, this.context.currentTime + duration);
 			this.context.resume();
 			clearTimeout(this.timeout);
@@ -155,12 +164,12 @@ class Song
 	{
 		if((value > 1 || value < 0) && !disableWarning)
 			console.warn(`The volume of a song must be between 0 and 1! The value given was ${value}.`);
-		
+
 		let output = Math.max(Math.min(value, 1), 0);
-		
+
 		if(isNaN(output))
 			throw `Invalid volume output ${output} from ${value}!`;
-		
+
 		return output;
 	}
 	// Returns the value as an integer between 0 to 100.
@@ -168,12 +177,12 @@ class Song
 	{
 		if((value > 100 || value < 0) && !disableWarning)
 			console.warn(`The display volume must be between 0 and 100! The value given was ${value}.`);
-		
+
 		let output = Math.max(Math.min(parseInt(value), 100), 0);
-		
+
 		if(isNaN(output))
 			throw `Invalid volume output ${output} from ${value}!`;
-		
+
 		return output;
 	}
 }

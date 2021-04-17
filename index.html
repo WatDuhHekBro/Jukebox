@@ -29,7 +29,7 @@
 			</div>
 			<div id="slider">
 				<span id="volume">50%</span>
-				<input id="volumeSlider" type="range" min="0" max="100" value="50" oninput="App.setVolume(this.value)" onmousewheel="App.scrollVolume(this)" class="grab">
+				<input id="volumeSlider" type="range" min="0" max="100" value="50" oninput="App.setVolume(this.value)" onwheel="App.scrollVolume(this)" class="grab" orient="vertical">
 				<span id="speaker" onclick="App.toggleMute()" class="button">🔊</span>
 			</div>
 		</div>
