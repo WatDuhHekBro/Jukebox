@@ -11,12 +11,9 @@ While these two programs use completely different systems, they both ultimately 
 - [CrossCode Original Soundtrack EX](https://interovgm.bandcamp.com/album/crosscode-original-soundtrack-ex)
 
 # How To Use
-1. Install Node.js if you haven't already.
-2. Open up a command prompt in the folder with the file `package.json`.
-2. `npm install`
-3. `npm start`
-4. Either download a preconfigured music pack or make your own using the instructions below.
-5. Go to `localhost` in your browser.
+1. Start a local server environment, [http-server](https://www.npmjs.com/package/http-server) for example.
+2. Either download a preconfigured music pack or make your own using the instructions below.
+3. Go to `localhost` in your browser.
 
 ## Notes
 - You can click the name of the current song that's playing (below "Now Playing") to see how long you've listened to the song. It does not take into account the time you've paused, and doesn't keep track of listening to nothing.
